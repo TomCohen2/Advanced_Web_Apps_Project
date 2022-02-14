@@ -1,60 +1,56 @@
+// server.js
+require("dotenv").config();
 const express = require("express");
-global.bodyParser = require("body-parser");
-const mongoose = require("mongoose");
-var cors = require("cors");
-let dbConfig = require("./database/db");
+const http = require("http");
 
-mongoose.Promise = global.Promise;
-mongoose
-  .connect(dbConfig.db, {
-    useNewUrlParser: true,
-  })
-  .then(
-    () => {
-      console.log("Database sucessfully connected!");
-    },
-    (error) => {
-      console.log("Could not connect to database : " + error);
-    }
-  );
+const cors = require("cors"); // added
 
-const PORT = process.env.PORT || 3001;
-const adRoute = require("./routes/ad.route");
+const connectDB = require("./config/db");
 
 const app = express();
+const PORT = process.env.PORT || 8000;
 
-app.use(bodyParser.json());
-app.use(
-  bodyParser.urlencoded({
-    extended: true,
-  })
-);
-app.use(cors());
-app.use("/ads", adRoute);
+// routes
+const ad = require("./routes/ad"); // added
 
-var MongoClient = require("mongodb").MongoClient;
+// cors
+app.use(cors({ origin: true, credentials: true })); // added
 
-const connectionString =
-  "mongodb+srv://TomCohen:Tc12345@mycluster.9z8tl.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
+// connect database
+connectDB();
 
-MongoClient.connect(connectionString, function (err, client) {
-  if (err) throw err;
+// initialize middleware
+app.use(express.json({ extended: false }));
+app.get("/", (req, res) => res.send("Server up and running"));
 
-  var db = client.db("ads");
+// use routes
+app.use("/api/ad", ad); // added
 
-  db.collection("holidayAds")
-    .find()
-    .toArray(function (err, result) {
-      if (err) throw err;
-      if (result)
-        console.log(`Connected to DB with ${result.length} documents`);
+// setting up port
 
-      app.get("/api", (req, res) => {
-        res.json({ message: result });
-      });
-    });
+const server = app.listen(PORT, () => {
+  console.log(`server is running on http://localhost:${PORT}`);
 });
 
-app.listen(PORT, () => {
-  console.log(`Server listening on ${PORT}`);
+var io = require("socket.io")(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
 });
+
+let clients = [];
+io.on("connection", (socket) => {
+  console.log("new connection");
+  // clients.push(socket);
+  // let result = JSON.stringify(socket);
+  // console.log(req);
+  // console.log(clients[0]);
+  // console.log(JSON.stringify(socket));
+});
+
+// app.get("/connections", (req, res) =>(
+//   // let result=JSON.stringify(clients);
+//   // res.json({ message: "Ad added successfully",result }))
+
+// // );
